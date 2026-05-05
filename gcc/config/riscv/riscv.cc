@@ -3957,6 +3957,7 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
 	  if (need_int_reg_p)
 	    emit_move_insn (dest, gen_lowpart (GET_MODE (dest), int_reg));
 	  else if (!rtx_equal_p (dest, int_reg))
+	  else if (!rtx_equal_p (dest, int_reg))
 	    emit_move_insn (dest, int_reg);
 	  return true;
 	}
@@ -9928,7 +9929,7 @@ riscv_emit_shadow_stack_prologue()
   rtx mem = gen_rtx_MEM (Pmode, addr);
 
   // addi    gp, gp, [4|8]
-  emit_insn (gen_add3_insn (gp, gp, constant))
+  emit_insn (gen_add3_insn (gp, gp, constant));
   // s[w|d]  ra, -[4|8](gp)
   emit_move_insn (mem, ra);
 
@@ -10184,7 +10185,7 @@ riscv_gen_multi_pop_insn (bool use_multi_pop_normal, unsigned mask,
 
 /* Handle the shadow call stack epilogue expand */
 bool
-riscv_emit_shadow_stack_epilogue()
+riscv_emit_shadow_stack_epilogue(int style)
 {
   // skip in case of exception handling
   if (need_shadow_stack_push_pop_p ()
@@ -10193,6 +10194,8 @@ riscv_emit_shadow_stack_epilogue()
 
   // if support for zicfiss available use that
   if (is_zicfiss_p()) {
+    rtx ra = gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM);
+    rtx t0 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
     if (BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
             && style != SIBCALL_RETURN
             && !cfun->machine->interrupt_handler_p) {
@@ -10539,7 +10542,7 @@ riscv_expand_epilogue (int style)
 			      EH_RETURN_STACKADJ_RTX));
 
   // Shadow call stack epilogue
-  riscv_emit_shadow_stack_epilogue()
+  riscv_emit_shadow_stack_epilogue(style);
 
   /* Return from interrupt.  */
   if (cfun->machine->interrupt_handler_p)
